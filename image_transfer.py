@@ -75,10 +75,10 @@ def baidu_image2str_url(uuid_url_dict = {}, types="characters"):
     for uuid, url in uuid_url_dict.items():
         ret = ""
         resp = client.basicGeneralUrl(url, options)  # url
-        print(resp)
+        # print(resp)
         if "error_msg" in resp:
             print("url recognition failed! Using local model.  url: " + url)
-            print(resp)
+            # print(resp)
             if resp["error_msg"] == "url response invalid" or resp["error_msg"] == "image size error":
                 #request for the image of url, convert to valid format
                 image_path = image_transform(url_img_download(url))
@@ -90,6 +90,7 @@ def baidu_image2str_url(uuid_url_dict = {}, types="characters"):
             for tex in resp["words_result"]:
                 if tex["probability"]["average"] > 0.85:
                     ret = ret + tex["words"]
+            # print(ret)
             uuid_text_dict[uuid] = ret
     return uuid_text_dict
 
@@ -103,11 +104,12 @@ def baidu_image2str_local(image_path, types="characters"):
     if types == "characters":
         if "error_msg" in resp:
             print("local recognition failed!  image_path: " + image_path)
-            print(resp)
+            # print(resp)
             return ret
         for tex in resp["words_result"]:
             if tex["probability"]["average"] > 0.85:
                 ret = ret + tex["words"]
+        # print(ret)
     elif types == "questions":
         pass
     return ret
@@ -143,21 +145,23 @@ if __name__ == '__main__':
     # print(tencent_image2str(test_dict, "question"))
     args = parse_args()
     mongo_client = MongoDriver(args.ip, args.port)    
+    MAX_BATCH_SIZE = 10000
+    for i in range(0,int(MAX_BATCH_SIZE/OCR_BATCH_SIZE)):
+        imgs = mongo_client.load_img_src(OCR_BATCH_SIZE)
+        # imgs = {'907f4b0a-7dd9-445b-990e-759728ec9380':'http://img.51jiaoxi.com/answer-images/907f4b0a-7dd9-445b-990e-759728ec9380.png'}
+        print(len(imgs))
 
-    imgs = mongo_client.load_img_src(OCR_BATCH_SIZE)
-    print(len(imgs))
-
-    #use baidu characters api
-    if args.type == 0:
-        imgs_text_dict = baidu_image2str_url(imgs)
-    #use tencent characters api
-    elif args.type == 1:
-        imgs_text_dict = tencent_image2str_url(imgs)
-    #use tencent questions api
-    elif args.type == 2:
-        imgs_text_dict = tencent_image2str_url(imgs,'questions')
-    print("solved %d images"%len(imgs_text_dict))
-    print(imgs_text_dict)
-    print(mongo_client.update_img_info(imgs_text_dict))
+        #use baidu characters api
+        if args.type == 0:
+            imgs_text_dict = baidu_image2str_url(imgs)
+        #use tencent characters api
+        elif args.type == 1:
+            imgs_text_dict = tencent_image2str_url(imgs)
+        #use tencent questions api
+        elif args.type == 2:
+            imgs_text_dict = tencent_image2str_url(imgs,'questions')
+        print("solved %d images"%len(imgs_text_dict))
+        # print(imgs_text_dict)
+        print(mongo_client.update_img_info(imgs_text_dict))
 
     
